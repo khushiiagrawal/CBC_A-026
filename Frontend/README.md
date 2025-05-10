@@ -1,1 +1,1 @@
-# This is the Frontend folder containing the Frontend of the Website
+# this is the frontend folder for the website
