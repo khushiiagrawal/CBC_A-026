@@ -1039,15 +1039,18 @@ function extractMaterialInfo(text) {
       // Standardize variations
       material = standardizeMaterialName(material, normalizedText);
 
-      // Filtering logic: Only allow valid materials
-      if (
-        material &&
-        !materialInfo.materials.some((m) => m.toLowerCase() === material.toLowerCase()) &&
-        isValidMaterial(material)
-      ) {
-        materialInfo.materials.push(material);
-        materialInfo.percentages.push(percentage);
-      }
+      // Split material into words and only keep recognized materials
+      const materialWords = material.split(/\s+/);
+      materialWords.forEach((word) => {
+        if (
+          word &&
+          isRecognizedMaterial(word, materialConfig) &&
+          !materialInfo.materials.some((m) => m.toLowerCase() === word.toLowerCase())
+        ) {
+          materialInfo.materials.push(word);
+          materialInfo.percentages.push(percentage);
+        }
+      });
     }
   });
 
@@ -1064,7 +1067,11 @@ function extractMaterialInfo(text) {
   const validPercentages = [];
   
   materialInfo.materials.forEach((material, index) => {
-    if (isValidMaterial(material)) {
+    // Only keep materials that are explicitly in ecoFriendlyMaterials or nonEcoFriendlyMaterials
+    if (
+      materialConfig.ecoFriendlyMaterials.hasOwnProperty(material.toLowerCase()) ||
+      materialConfig.nonEcoFriendlyMaterials.hasOwnProperty(material.toLowerCase())
+    ) {
       validMaterials.push(material);
       validPercentages.push(materialInfo.percentages[index]);
     }
@@ -1107,16 +1114,21 @@ function standardizeMaterialName(material, fullText) {
 function isRecognizedMaterial(materialName, config) {
   const lowerMaterial = materialName.toLowerCase();
 
+  // Helper to check for whole word match
+  function hasWholeWord(text, word) {
+    return new RegExp(`\\b${word.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, 'i').test(text);
+  }
+
   // Check eco-friendly materials
   for (const ecoMaterial of Object.keys(config.ecoFriendlyMaterials)) {
-    if (lowerMaterial.includes(ecoMaterial.toLowerCase())) {
+    if (hasWholeWord(lowerMaterial, ecoMaterial.toLowerCase())) {
       return true;
     }
   }
 
   // Check non-eco-friendly materials
   for (const nonEcoMaterial of Object.keys(config.nonEcoFriendlyMaterials)) {
-    if (lowerMaterial.includes(nonEcoMaterial.toLowerCase())) {
+    if (hasWholeWord(lowerMaterial, nonEcoMaterial.toLowerCase())) {
       return true;
     }
   }
@@ -1133,7 +1145,7 @@ function isRecognizedMaterial(materialName, config) {
     "metal",
     "paper",
   ];
-  return generalCategories.some((category) => lowerMaterial.includes(category));
+  return generalCategories.some((category) => hasWholeWord(lowerMaterial, category));
 }
 
 // Add materials based on contextual analysis
@@ -1201,6 +1213,23 @@ function calculateEcoScore(materialInfo) {
   let totalMaterials = 0;
   let ecoClaimsBonus = 0;
 
+  // Only use real materials for scoring
+  const realMaterials = materialInfo.materials
+    .map((material, index) => ({
+      material,
+      percentage: materialInfo.percentages[index] || 100,
+    }))
+    .filter(({ material }) =>
+      materialConfig.ecoFriendlyMaterials.hasOwnProperty(material.toLowerCase()) ||
+      materialConfig.nonEcoFriendlyMaterials.hasOwnProperty(material.toLowerCase())
+    );
+
+  // If no real materials, fallback to all
+  const materialsToScore = realMaterials.length > 0 ? realMaterials : materialInfo.materials.map((material, index) => ({
+    material,
+    percentage: materialInfo.percentages[index] || 100,
+  }));
+
   // Check for eco-claims for bonus points
   materialInfo.materials.forEach((material) => {
     if (
@@ -1212,8 +1241,7 @@ function calculateEcoScore(materialInfo) {
     }
   });
 
-  materialInfo.materials.forEach((material, index) => {
-    const percentage = materialInfo.percentages[index] || 100;
+  materialsToScore.forEach(({ material, percentage }) => {
     let materialData = null;
     let materialScore = 0;
     let isRecyclable = false;
@@ -1221,7 +1249,6 @@ function calculateEcoScore(materialInfo) {
     const lowerMaterial = material.toLowerCase();
 
     // Enhanced classification with more specificity
-
     // Check eco-friendly materials first
     for (const [ecoMaterial, data] of Object.entries(
       materialConfig.ecoFriendlyMaterials
@@ -1236,7 +1263,10 @@ function calculateEcoScore(materialInfo) {
         if (lowerMaterial.includes("cotton")) {
           isBiodegradable = true;
         }
-
+        // Special case for wood - always biodegradable
+        if (lowerMaterial.includes("wood")) {
+          isBiodegradable = true;
+        }
         break;
       }
     }
@@ -1257,7 +1287,6 @@ function calculateEcoScore(materialInfo) {
     }
 
     // Special cases and refinements
-
     // Natural materials are almost always biodegradable
     if (!materialData && isNaturalMaterial(lowerMaterial)) {
       materialScore = 0.9;
