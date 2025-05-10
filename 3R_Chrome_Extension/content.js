@@ -1566,7 +1566,8 @@ function createMaterialInfoDisplay(materialInfo, ecoScore) {
         <span style="font-size: 14px;">⚠️</span> Contains Plastic
       </span>`;
     }
-    if (hasBiodegradable) {
+    // Only show Biodegradable badge if the product is eco-friendly and has biodegradable materials
+    if (hasBiodegradable && isEcoFriendly) {
       content += `<span style="background: rgba(46, 125, 50, 0.1); color: #2e7d32; padding: 6px 12px; border-radius: 16px; font-size: 12px; display: flex; align-items: center; gap: 4px;">
         <span style="font-size: 14px;">🌱</span> Biodegradable
       </span>`;
