@@ -1417,12 +1417,8 @@ function createShowButton(product) {
 // Modify createMaterialInfoDisplay to include a close button
 function createMaterialInfoDisplay(materialInfo, ecoScore) {
   const isEcoFriendly = ecoScore >= materialConfig.minEcoScore;
-  const bgColor = isEcoFriendly
-    ? "rgba(46, 125, 50, 0.1)"
-    : "rgba(198, 40, 40, 0.1)";
-  const borderColor = isEcoFriendly
-    ? "rgba(46, 125, 50, 0.3)"
-    : "rgba(198, 40, 40, 0.3)";
+  const bgColor = isEcoFriendly ? '#e8f3e8' : '#f8e8e8';
+  const borderColor = isEcoFriendly ? 'rgba(46, 125, 50, 0.3)' : 'rgba(198, 40, 40, 0.3)';
 
   const display = document.createElement("div");
   display.style.cssText = `
